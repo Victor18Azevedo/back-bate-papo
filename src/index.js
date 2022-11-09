@@ -1,11 +1,23 @@
 import express from 'express';
 import cors from 'cors';
-
-const PORT = 5000;
+import { MongoClient } from 'mongodb';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const mongoClient = new MongoClient(process.env.MONGO_URI);
+let db;
+
+mongoClient
+  .connect()
+  .then(() => {
+    db = mongoClient.db('batePapoUol');
+    console.log('Connected successfully to data server');
+  })
+  .catch(() => console.error('ERROR: Not connected to data server'));
 
 app.post('/participants', (req, res) => {
   const { name } = req.body;
@@ -41,6 +53,6 @@ app.get('/messages', (req, res) => {
   res.send(messagesList);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on PORT ${PORT}`);
+app.listen(process.env.PORT, () => {
+  console.log(`Server listening on PORT ${process.env.PORT}`);
 });
