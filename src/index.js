@@ -1,11 +1,11 @@
-import express, { application } from 'express';
+import express from 'express';
 import cors from 'cors';
 
 const PORT = 5000;
 
 const app = express();
+app.use(cors());
 app.use(express.json());
-app.use(cors);
 
 app.post('/participants', (req, res) => {
   const { name } = req.body;
