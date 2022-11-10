@@ -129,13 +129,30 @@ app.get('/participants', async (req, res) => {
   }
 });
 
-app.get('/messages', (req, res) => {
-  const { user } = req.headers;
-  const { limit } = req.query;
+app.get('/messages', async (req, res) => {
+  try {
+    const { user } = req.headers;
+    const { limit } = req.query;
 
-  const messagesList = [];
+    const allMessages = await messages.find().toArray();
 
-  res.send(messagesList);
+    const userMessages = allMessages.filter((message) => {
+      return (
+        message.type !== 'private_message' ||
+        (message.type === 'private_message' &&
+          (message.from === user || message.to === user))
+      );
+    });
+
+    if (limit) {
+      res.send(userMessages.slice(-limit));
+      return;
+    }
+    res.send(userMessages);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
+  }
 });
 
 app.listen(process.env.PORT, () => {
