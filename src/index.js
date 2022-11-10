@@ -2,7 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
+import dayjs from 'dayjs';
+import Joi from 'joi';
 dotenv.config();
+dayjs().format();
 
 const app = express();
 app.use(cors());
@@ -10,23 +13,60 @@ app.use(express.json());
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
+let participants;
+let messages;
 
-mongoClient
-  .connect()
-  .then(() => {
+async function startMongoDB() {
+  try {
+    await mongoClient.connect();
     db = mongoClient.db('batePapoUol');
+    participants = db.collection('participants');
+    messages = db.collection('messages');
     console.log('Connected successfully to data server');
-  })
-  .catch(() => console.error('ERROR: Not connected to data server'));
+  } catch {
+    console.error('ERROR: Not connected to data server');
+  }
+}
 
-app.post('/participants', (req, res) => {
-  const { name } = req.body;
+app.post('/participants', async (req, res) => {
+  try {
+    const schema = Joi.object({
+      name: Joi.string().required(),
+    });
 
-  res.sendStatus(201);
+    const { error } = schema.validate(req.body);
+    if (error) {
+      console.log(error);
+      res.sendStatus(422);
+      return;
+    }
+
+    const { name } = req.body;
+
+    const user = await participants.findOne({ name });
+    if (user) {
+      res.sendStatus(409);
+      return;
+    }
+    const time = Date.now();
+    const participant = { name, lastStatus: time };
+    const message = {
+      from: name,
+      to: 'Todos',
+      text: 'entra na sala...',
+      type: 'status',
+      time: dayjs(time).format('HH:mm:ss'),
+    };
+    await participants.insertOne(participant);
+    await messages.insertOne(message);
+    res.sendStatus(201);
+  } catch {
+    res.sendStatus(500);
+  }
 });
 
 app.post('/messages', (req, res) => {
-  const { user } = req.header;
+  const { user } = req.headers;
   const { to, text, type } = req.body;
 
   res.sendStatus(201);
@@ -45,7 +85,7 @@ app.get('/participants', (req, res) => {
 });
 
 app.get('/messages', (req, res) => {
-  const { user } = req.header;
+  const { user } = req.headers;
   const { limit } = req.query;
 
   const messagesList = [];
@@ -56,3 +96,5 @@ app.get('/messages', (req, res) => {
 app.listen(process.env.PORT, () => {
   console.log(`Server listening on PORT ${process.env.PORT}`);
 });
+
+startMongoDB();
