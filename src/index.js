@@ -78,10 +78,13 @@ app.post('/status', (req, res) => {
   res.sendStatus(200);
 });
 
-app.get('/participants', (req, res) => {
-  const participantsList = [];
-
-  res.send(participantsList);
+app.get('/participants', async (req, res) => {
+  try {
+    const participanList = await participants.find().toArray();
+    res.send(participanList);
+  } catch {
+    res.sendStatus(500);
+  }
 });
 
 app.get('/messages', (req, res) => {
