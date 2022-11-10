@@ -103,6 +103,15 @@ app.post('/messages', async (req, res) => {
 app.post('/status', async (req, res) => {
   try {
     const { user } = req.headers;
+    const userFind = await participants.findOne({ name: user });
+    if (!userFind) {
+      res.sendStatus(404);
+      return;
+    }
+
+    const participantQuery = { name: user };
+    const participantReplace = { name: user, lastStatus: Date.now() };
+    await participants.replaceOne(participantQuery, participantReplace);
     res.sendStatus(200);
   } catch (err) {
     console.log(err);
