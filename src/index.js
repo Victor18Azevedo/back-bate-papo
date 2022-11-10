@@ -155,7 +155,23 @@ app.get('/messages', async (req, res) => {
   }
 });
 
-app.listen(process.env.PORT, () => {
+const intervalId = setInterval(async () => {
+  try {
+    const usersList = await participants.find().toArray();
+    const inactiveUsers = [];
+    const now = Date.now();
+    usersList.forEach((user) => {
+      if (now - user.lastStatus > 10000) {
+        inactiveUsers.push(user._id);
+      }
+    });
+    await participants.deleteMany({ _id: { $in: inactiveUsers } });
+  } catch (err) {
+    console.log(err);
+  }
+}, 15000);
+
+app.listen(process.env.API_PORT, () => {
   console.log(`Server listening on PORT ${process.env.PORT}`);
 });
 
