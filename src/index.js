@@ -7,6 +7,8 @@ import Joi from 'joi';
 dotenv.config();
 dayjs().format();
 
+const messageTypes = ['private_message', 'message'];
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -65,11 +67,35 @@ app.post('/participants', async (req, res) => {
   }
 });
 
-app.post('/messages', (req, res) => {
-  const { user } = req.headers;
-  const { to, text, type } = req.body;
+app.post('/messages', async (req, res) => {
+  try {
+    const { user } = req.headers;
+    const userFind = await participants.findOne({ name: user });
 
-  res.sendStatus(201);
+    const { to, text, type } = req.body;
+    const message = { from: userFind?.name, to, text, type };
+
+    const schema = Joi.object({
+      from: Joi.string().required(),
+      to: Joi.string().required(),
+      text: Joi.string().required(),
+      type: Joi.alternatives().try(...messageTypes),
+    });
+
+    const { error } = schema.validate(message);
+    if (error) {
+      console.log(error);
+      res.sendStatus(422);
+      return;
+    }
+    await messages.insertOne({
+      ...message,
+      time: dayjs(Date.now()).format('HH:mm:ss'),
+    });
+    res.sendStatus(201);
+  } catch {
+    res.sendStatus(500);
+  }
 });
 
 app.post('/status', (req, res) => {
