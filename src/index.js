@@ -62,7 +62,8 @@ app.post('/participants', async (req, res) => {
     await participants.insertOne(participant);
     await messages.insertOne(message);
     res.sendStatus(201);
-  } catch {
+  } catch (err) {
+    console.log(err);
     res.sendStatus(500);
   }
 });
@@ -93,22 +94,28 @@ app.post('/messages', async (req, res) => {
       time: dayjs(Date.now()).format('HH:mm:ss'),
     });
     res.sendStatus(201);
-  } catch {
+  } catch (err) {
+    console.log(err);
     res.sendStatus(500);
   }
 });
 
-app.post('/status', (req, res) => {
-  const { user } = req.header;
-
-  res.sendStatus(200);
+app.post('/status', async (req, res) => {
+  try {
+    const { user } = req.headers;
+    res.sendStatus(200);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
+  }
 });
 
 app.get('/participants', async (req, res) => {
   try {
     const participanList = await participants.find().toArray();
     res.send(participanList);
-  } catch {
+  } catch (err) {
+    console.log(err);
     res.sendStatus(500);
   }
 });
