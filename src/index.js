@@ -12,6 +12,12 @@ const participantSchema = Joi.object({
 });
 
 const messageTypes = ['private_message', 'message'];
+const messageSchema = Joi.object({
+  from: Joi.string().required(),
+  to: Joi.string().required(),
+  text: Joi.string().required(),
+  type: Joi.alternatives().try(...messageTypes),
+});
 
 const app = express();
 app.use(cors());
@@ -72,31 +78,25 @@ app.post('/participants', async (req, res) => {
 app.post('/messages', async (req, res) => {
   try {
     const { user } = req.headers;
+    const messageBody = req.body;
+
     const userFind = await participants.findOne({ name: user });
+    const message = { from: userFind?.name, ...messageBody };
 
-    const { to, text, type } = req.body;
-    const message = { from: userFind?.name, to, text, type };
-
-    const schema = Joi.object({
-      from: Joi.string().required(),
-      to: Joi.string().required(),
-      text: Joi.string().required(),
-      type: Joi.alternatives().try(...messageTypes),
-    });
-
-    const { error } = schema.validate(message);
+    const { error } = messageSchema.validate(message);
     if (error) {
       console.log(error);
       res.sendStatus(422);
       return;
     }
+
     await messages.insertOne({
       ...message,
-      time: dayjs(Date.now()).format('HH:mm:ss'),
+      time: dayjs().format('HH:mm:ss'),
     });
     res.sendStatus(201);
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
     res.sendStatus(500);
   }
 });
