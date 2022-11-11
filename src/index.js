@@ -7,6 +7,10 @@ import Joi from 'joi';
 dotenv.config();
 dayjs().format();
 
+const participantSchema = Joi.object({
+  name: Joi.string().required(),
+});
+
 const messageTypes = ['private_message', 'message'];
 
 const app = express();
@@ -32,28 +36,25 @@ async function startMongoDB() {
 
 app.post('/participants', async (req, res) => {
   try {
-    const schema = Joi.object({
-      name: Joi.string().required(),
-    });
+    const participantBody = req.body;
 
-    const { error } = schema.validate(req.body);
+    const { error } = participantSchema.validate(participantBody);
     if (error) {
       console.log(error);
       res.sendStatus(422);
       return;
     }
 
-    const { name } = req.body;
-
-    const user = await participants.findOne({ name });
-    if (user) {
+    const userFind = await participants.findOne({ name: participantBody.name });
+    if (userFind) {
       res.sendStatus(409);
       return;
     }
+
     const time = Date.now();
-    const participant = { name, lastStatus: time };
+    const participant = { name: participantBody.name, lastStatus: time };
     const message = {
-      from: name,
+      from: participantBody.name,
       to: 'Todos',
       text: 'entra na sala...',
       type: 'status',
@@ -62,8 +63,8 @@ app.post('/participants', async (req, res) => {
     await participants.insertOne(participant);
     await messages.insertOne(message);
     res.sendStatus(201);
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
     res.sendStatus(500);
   }
 });
