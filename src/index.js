@@ -28,15 +28,15 @@ app.use(express.json());
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
-let participants;
-let messages;
+let participantsCollection;
+let messagesCollection;
 
 async function startMongoDB() {
   try {
     await mongoClient.connect();
     db = mongoClient.db('batePapoUol');
-    participants = db.collection('participants');
-    messages = db.collection('messages');
+    participantsCollection = db.collection('participants');
+    messagesCollection = db.collection('messages');
     console.log('Connected successfully to data server');
   } catch {
     console.error('ERROR: Not connected to data server');
@@ -54,7 +54,9 @@ app.post('/participants', async (req, res) => {
       return;
     }
 
-    const userFind = await participants.findOne({ name: participantBody.name });
+    const userFind = await participantsCollection.findOne({
+      name: participantBody.name,
+    });
     if (userFind) {
       res.sendStatus(409);
       return;
@@ -69,8 +71,8 @@ app.post('/participants', async (req, res) => {
       type: 'status',
       time: dayjs(time).format('HH:mm:ss'),
     };
-    await participants.insertOne(participant);
-    await messages.insertOne(message);
+    await participantsCollection.insertOne(participant);
+    await messagesCollection.insertOne(message);
     res.sendStatus(201);
   } catch (error) {
     console.log(error);
@@ -83,7 +85,7 @@ app.post('/messages', async (req, res) => {
     const { user } = req.headers;
     const messageBody = req.body;
 
-    const userFind = await participants.findOne({ name: user });
+    const userFind = await participantsCollection.findOne({ name: user });
     const message = { from: userFind?.name, ...messageBody };
 
     const { error } = messageSchema.validate(message);
@@ -93,7 +95,7 @@ app.post('/messages', async (req, res) => {
       return;
     }
 
-    await messages.insertOne({
+    await messagesCollection.insertOne({
       ...message,
       time: dayjs().format('HH:mm:ss'),
     });
@@ -107,7 +109,7 @@ app.post('/messages', async (req, res) => {
 app.post('/status', async (req, res) => {
   try {
     const { user } = req.headers;
-    const userFind = await participants.findOne({ name: user });
+    const userFind = await participantsCollection.findOne({ name: user });
     if (!userFind) {
       res.sendStatus(404);
       return;
@@ -115,7 +117,10 @@ app.post('/status', async (req, res) => {
 
     const participantQuery = { name: user };
     const participantReplace = { name: user, lastStatus: Date.now() };
-    await participants.replaceOne(participantQuery, participantReplace);
+    await participantsCollection.replaceOne(
+      participantQuery,
+      participantReplace
+    );
     res.sendStatus(200);
   } catch (err) {
     console.log(err);
@@ -125,7 +130,7 @@ app.post('/status', async (req, res) => {
 
 app.get('/participants', async (req, res) => {
   try {
-    const participanList = await participants.find().toArray();
+    const participanList = await participantsCollection.find().toArray();
     res.send(participanList);
   } catch (err) {
     console.log(err);
@@ -138,7 +143,7 @@ app.get('/messages', async (req, res) => {
     const { user } = req.headers;
     const { limit } = req.query;
 
-    const allMessages = await messages.find().toArray();
+    const allMessages = await messagesCollection.find().toArray();
 
     const userMessages = allMessages.filter((message) => {
       return (
@@ -164,8 +169,10 @@ app.delete('/messages/:id', async (req, res) => {
     const { user } = req.headers;
     const { id } = req.params;
 
-    const messageFind = await messages.findOne({ _id: new ObjectId(id) });
-    console.log(messageFind);
+    const messageFind = await messagesCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
     if (!messageFind) {
       return res.sendStatus(404);
     }
@@ -174,7 +181,7 @@ app.delete('/messages/:id', async (req, res) => {
       return res.sendStatus(401);
     }
 
-    await messages.deleteOne({ _id: new ObjectId(id) });
+    await messagesCollection.deleteOne({ _id: new ObjectId(id) });
     res.sendStatus(200);
   } catch (error) {
     console.log(error);
@@ -185,7 +192,7 @@ app.delete('/messages/:id', async (req, res) => {
 setInterval(async () => {
   try {
     const cutoff = Date.now() - CUTOFF_TIME;
-    const inactiveUsers = await participants
+    const inactiveUsers = await participantsCollection
       .find({ lastStatus: { $lt: cutoff } })
       .toArray();
 
@@ -199,10 +206,10 @@ setInterval(async () => {
           time: dayjs().format('HH:mm:ss'),
         };
       });
-      await participants.deleteMany({
+      await participantsCollection.deleteMany({
         _id: { $in: inactiveUsers.map((user) => user._id) },
       });
-      await messages.insertMany(messagesLeave);
+      await messagesCollection.insertMany(messagesLeave);
     }
   } catch (error) {
     console.log(error);
