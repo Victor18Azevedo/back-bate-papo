@@ -7,6 +7,9 @@ import Joi from 'joi';
 dotenv.config();
 dayjs().format();
 
+const CUTOFF_TIME = 10000;
+const REFRESH_TIME = 15000;
+
 const participantSchema = Joi.object({
   name: Joi.string().required(),
 });
@@ -179,21 +182,32 @@ app.delete('/messages/:id', async (req, res) => {
   }
 });
 
-const intervalId = setInterval(async () => {
+setInterval(async () => {
   try {
-    const usersList = await participants.find().toArray();
-    const inactiveUsers = [];
-    const now = Date.now();
-    usersList.forEach((user) => {
-      if (now - user.lastStatus > 10000) {
-        inactiveUsers.push(user._id);
-      }
-    });
-    await participants.deleteMany({ _id: { $in: inactiveUsers } });
-  } catch (err) {
-    console.log(err);
+    const cutoff = Date.now() - CUTOFF_TIME;
+    const inactiveUsers = await participants
+      .find({ lastStatus: { $lt: cutoff } })
+      .toArray();
+
+    if (inactiveUsers.length > 0) {
+      const messagesLeave = inactiveUsers.map((user) => {
+        return {
+          from: user.name,
+          to: 'Todos',
+          text: 'sai da sala...',
+          type: 'status',
+          time: dayjs().format('HH:mm:ss'),
+        };
+      });
+      await participants.deleteMany({
+        _id: { $in: inactiveUsers.map((user) => user._id) },
+      });
+      await messages.insertMany(messagesLeave);
+    }
+  } catch (error) {
+    console.log(error);
   }
-}, 15000);
+}, REFRESH_TIME);
 
 app.listen(process.env.API_PORT, () => {
   console.log(`Server listening on PORT ${process.env.PORT}`);
