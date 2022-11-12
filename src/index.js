@@ -189,6 +189,46 @@ app.delete('/messages/:id', async (req, res) => {
   }
 });
 
+app.put('/messages/:id', async (req, res) => {
+  try {
+    const { user } = req.headers;
+    const { id } = req.params;
+    const messageBody = req.body;
+
+    const userFind = await participantsCollection.findOne({ name: user });
+    const message = { from: userFind?.name, ...messageBody };
+    const { error } = messageSchema.validate(message);
+    if (error) {
+      console.log(error);
+      res.sendStatus(422);
+      return;
+    }
+
+    const messageFind = await messagesCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!messageFind) {
+      return res.sendStatus(404);
+    }
+
+    if (messageFind.from !== user) {
+      return res.sendStatus(401);
+    }
+
+    const messageQuery = { _id: new ObjectId(id) };
+    const messageReplace = {
+      ...message,
+      time: dayjs().format('HH:mm:ss'),
+    };
+    await messagesCollection.replaceOne(messageQuery, messageReplace);
+    res.sendStatus(200);
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+});
+
 setInterval(async () => {
   try {
     const cutoff = Date.now() - CUTOFF_TIME;
