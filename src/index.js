@@ -1,9 +1,9 @@
-import express from 'express';
-import cors from 'cors';
-import { MongoClient, ObjectId } from 'mongodb';
-import dotenv from 'dotenv';
-import dayjs from 'dayjs';
-import Joi from 'joi';
+import express from "express";
+import cors from "cors";
+import { MongoClient, ObjectId } from "mongodb";
+import dotenv from "dotenv";
+import dayjs from "dayjs";
+import Joi from "joi";
 dotenv.config();
 dayjs().format();
 
@@ -14,7 +14,7 @@ const participantSchema = Joi.object({
   name: Joi.string().required(),
 });
 
-const messageTypes = ['private_message', 'message'];
+const messageTypes = ["private_message", "message"];
 const messageSchema = Joi.object({
   from: Joi.string().required(),
   to: Joi.string().required(),
@@ -34,16 +34,16 @@ let messagesCollection;
 async function startMongoDB() {
   try {
     await mongoClient.connect();
-    db = mongoClient.db('batePapoUol');
-    participantsCollection = db.collection('participants');
-    messagesCollection = db.collection('messages');
-    console.log('Connected successfully to data server');
+    db = mongoClient.db("batePapoUol");
+    participantsCollection = db.collection("participants");
+    messagesCollection = db.collection("messages");
+    console.log("Connected successfully to data server");
   } catch {
-    console.error('ERROR: Not connected to data server');
+    console.error("ERROR: Not connected to data server");
   }
 }
 
-app.post('/participants', async (req, res) => {
+app.post("/participants", async (req, res) => {
   try {
     const participantBody = req.body;
 
@@ -66,10 +66,10 @@ app.post('/participants', async (req, res) => {
     const participant = { name: participantBody.name, lastStatus: time };
     const message = {
       from: participantBody.name,
-      to: 'Todos',
-      text: 'entra na sala...',
-      type: 'status',
-      time: dayjs(time).format('HH:mm:ss'),
+      to: "Todos",
+      text: "entra na sala...",
+      type: "status",
+      time: dayjs(time).format("HH:mm:ss"),
     };
     await participantsCollection.insertOne(participant);
     await messagesCollection.insertOne(message);
@@ -80,7 +80,7 @@ app.post('/participants', async (req, res) => {
   }
 });
 
-app.post('/messages', async (req, res) => {
+app.post("/messages", async (req, res) => {
   try {
     const { user } = req.headers;
     const messageBody = req.body;
@@ -97,7 +97,7 @@ app.post('/messages', async (req, res) => {
 
     await messagesCollection.insertOne({
       ...message,
-      time: dayjs().format('HH:mm:ss'),
+      time: dayjs().format("HH:mm:ss"),
     });
     res.sendStatus(201);
   } catch (error) {
@@ -106,7 +106,7 @@ app.post('/messages', async (req, res) => {
   }
 });
 
-app.post('/status', async (req, res) => {
+app.post("/status", async (req, res) => {
   try {
     const { user } = req.headers;
     const userFind = await participantsCollection.findOne({ name: user });
@@ -128,7 +128,7 @@ app.post('/status', async (req, res) => {
   }
 });
 
-app.get('/participants', async (req, res) => {
+app.get("/participants", async (req, res) => {
   try {
     const participanList = await participantsCollection.find().toArray();
     res.send(participanList);
@@ -138,7 +138,7 @@ app.get('/participants', async (req, res) => {
   }
 });
 
-app.get('/messages', async (req, res) => {
+app.get("/messages", async (req, res) => {
   try {
     const { user } = req.headers;
     const { limit } = req.query;
@@ -147,8 +147,8 @@ app.get('/messages', async (req, res) => {
 
     const userMessages = allMessages.filter((message) => {
       return (
-        message.type !== 'private_message' ||
-        (message.type === 'private_message' &&
+        message.type !== "private_message" ||
+        (message.type === "private_message" &&
           (message.from === user || message.to === user))
       );
     });
@@ -164,7 +164,7 @@ app.get('/messages', async (req, res) => {
   }
 });
 
-app.delete('/messages/:id', async (req, res) => {
+app.delete("/messages/:id", async (req, res) => {
   try {
     const { user } = req.headers;
     const { id } = req.params;
@@ -189,7 +189,7 @@ app.delete('/messages/:id', async (req, res) => {
   }
 });
 
-app.put('/messages/:id', async (req, res) => {
+app.put("/messages/:id", async (req, res) => {
   try {
     const { user } = req.headers;
     const { id } = req.params;
@@ -219,7 +219,7 @@ app.put('/messages/:id', async (req, res) => {
     const messageQuery = { _id: new ObjectId(id) };
     const messageReplace = {
       ...message,
-      time: dayjs().format('HH:mm:ss'),
+      time: dayjs().format("HH:mm:ss"),
     };
     await messagesCollection.replaceOne(messageQuery, messageReplace);
     res.sendStatus(200);
@@ -240,10 +240,10 @@ setInterval(async () => {
       const messagesLeave = inactiveUsers.map((user) => {
         return {
           from: user.name,
-          to: 'Todos',
-          text: 'sai da sala...',
-          type: 'status',
-          time: dayjs().format('HH:mm:ss'),
+          to: "Todos",
+          text: "sai da sala...",
+          type: "status",
+          time: dayjs().format("HH:mm:ss"),
         };
       });
       await participantsCollection.deleteMany({
